@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ Vivi's Vlog ✨</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Floating Y2K decorations -->
+    <div class="floating-decorations">
+        <span class="deco star">⭐</span>
+        <span class="deco star">✨</span>
+        <span class="deco mic">🎤</span>
+        <span class="deco icecream">🍦</span>
+        <span class="deco bow">🎀</span>
+        <span class="deco sunglasses">🕶️</span>
+        <span class="deco star">⭐</span>
+        <span class="deco hairclip">💎</span>
+        <span class="deco star">✨</span>
+        <span class="deco icecream">🍨</span>
+        <span class="deco mic">🎙️</span>
+        <span class="deco bow">🎀</span>
+        <span class="deco star">⭐</span>
+        <span class="deco sunglasses">😎</span>
+        <span class="deco star">✨</span>
+    </div>
+
+    <!-- Main container -->
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <span class="logo-star">✨</span>
+                <h1>Vivi's Vlog</h1>
+                <span class="logo-star">✨</span>
+            </div>
+        </header>
+
+        <!-- Search bar -->
+        <div class="search-container">
+            <div class="search-bar">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Search videos...">
+                <button class="search-btn">Go!</button>
+            </div>
+            <!-- Tag filters -->
+            <div class="tag-filters">
+                <button class="tag-btn active" data-tag="all">✨ All</button>
+                <button class="tag-btn" data-tag="music">🎤 Music</button>
+                <button class="tag-btn" data-tag="food">🍦 Food</button>
+                <button class="tag-btn" data-tag="dance">💃 Dance</button>
+                <button class="tag-btn" data-tag="life">⭐ Life</button>
+            </div>
+        </div>
+
+        <!-- Video Grid - populated from Google Sheets -->
+        <main class="video-grid"></main>
+
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active">
+                <span class="nav-icon">🏠</span>
+                <span>Home</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">🎬</span>
+                <span>Videos</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">✨</span>
+                <span>New</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">💖</span>
+                <span>Faves</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span>Me</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Y2K cursor trail effect -->
+    <script src="script.js"></script>
+</body>
+</html>
