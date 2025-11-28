@@ -83,6 +83,22 @@ async function fetchVimeoThumbnail(vimeoId) {
     }
 }
 
+// Fetch Vimeo video info (including dimensions)
+async function fetchVimeoInfo(vimeoId) {
+    try {
+        const response = await fetch(`https://vimeo.com/api/v2/video/${vimeoId}.json`);
+        const data = await response.json();
+        return {
+            width: data[0]?.width || 1920,
+            height: data[0]?.height || 1080,
+            aspectRatio: (data[0]?.width || 1920) / (data[0]?.height || 1080)
+        };
+    } catch (error) {
+        console.log('Could not fetch Vimeo info for', vimeoId, error);
+        return { width: 1920, height: 1080, aspectRatio: 16/9 };
+    }
+}
+
 // Create a video card element
 function createVideoCard(video, index) {
     const card = document.createElement('div');
@@ -262,10 +278,20 @@ async function updateVimeoThumbnails() {
 document.addEventListener('DOMContentLoaded', loadVideosFromSheet);
 
 // Video Player Modal
-function showVideoPlayer(platform, videoId, title) {
+async function showVideoPlayer(platform, videoId, title) {
     // Remove existing player if any
     const existing = document.querySelector('.video-player-modal');
     if (existing) existing.remove();
+
+    // Get video aspect ratio (default 16:9 for YouTube, fetch for Vimeo)
+    let aspectRatio = 16 / 9;
+    let isPortrait = false;
+
+    if (platform === 'vimeo') {
+        const info = await fetchVimeoInfo(videoId);
+        aspectRatio = info.aspectRatio;
+        isPortrait = aspectRatio < 1;
+    }
 
     // Build embed URL based on platform
     let embedUrl;
@@ -365,9 +391,11 @@ function showVideoPlayer(platform, videoId, title) {
     `;
 
     const wrapper = modal.querySelector('.video-player-wrapper');
+    // Use padding-bottom trick for aspect ratio (100 / aspectRatio gives percentage)
+    const paddingPercent = (1 / aspectRatio) * 100;
     wrapper.style.cssText = `
         position: relative;
-        padding-bottom: 56.25%;
+        padding-bottom: ${paddingPercent}%;
         height: 0;
         border-radius: 10px;
         overflow: hidden;
@@ -383,19 +411,41 @@ function showVideoPlayer(platform, videoId, title) {
         height: 100%;
     `;
 
-    // Handle landscape mode - make video larger
+    // Handle responsive layout based on aspect ratio
     const updateLayout = () => {
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        const isLandscape = vw > vh;
+        const isLandscapeScreen = vw > vh;
         const isMobile = vw < 768 || vh < 500;
 
-        if (isLandscape && isMobile) {
-            // Landscape mobile - fit video within viewport
-            // Calculate max width based on available height (16:9 aspect ratio)
-            const padding = 16; // 8px on each side
-            const availableHeight = vh - 40; // Leave some margin
-            const maxVideoWidth = (availableHeight - padding) * (16 / 9);
+        if (isPortrait) {
+            // Portrait video - constrain by height
+            const maxHeight = vh - 80; // Leave margin for title and padding
+            const maxWidth = maxHeight * aspectRatio;
+            const padding = 40; // 20px on each side
+
+            content.style.width = Math.min(vw - 40, maxWidth + padding) + 'px';
+            content.style.maxWidth = '400px'; // Cap width for portrait videos
+            content.style.height = 'auto';
+            content.style.maxHeight = (vh - 40) + 'px';
+            content.style.padding = '20px';
+            content.style.borderRadius = '20px';
+            content.style.border = '4px solid white';
+            titleEl.style.display = 'block';
+            titleEl.style.fontSize = '1rem';
+            titleEl.style.marginBottom = '10px';
+            closeBtn.style.width = '36px';
+            closeBtn.style.height = '36px';
+            closeBtn.style.fontSize = '1rem';
+            closeBtn.style.top = '-12px';
+            closeBtn.style.right = '-12px';
+            closeBtn.style.border = '3px solid white';
+            wrapper.style.borderRadius = '10px';
+        } else if (isLandscapeScreen && isMobile) {
+            // Landscape screen with landscape video - fit to viewport
+            const padding = 16;
+            const availableHeight = vh - 40;
+            const maxVideoWidth = (availableHeight - padding) * aspectRatio;
 
             content.style.width = Math.min(vw - 20, maxVideoWidth + padding) + 'px';
             content.style.maxWidth = 'none';
@@ -413,7 +463,7 @@ function showVideoPlayer(platform, videoId, title) {
             closeBtn.style.border = '2px solid white';
             wrapper.style.borderRadius = '6px';
         } else {
-            // Portrait or desktop - normal layout
+            // Portrait screen or desktop - normal layout
             content.style.width = '90%';
             content.style.maxWidth = '800px';
             content.style.height = 'auto';
