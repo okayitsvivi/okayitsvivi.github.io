@@ -46,12 +46,41 @@ function getYouTubeId(url) {
     return match ? match[1] : null;
 }
 
+// Extract Vimeo video ID from URL
+function getVimeoId(url) {
+    if (!url) return null;
+    const match = url.match(/(?:vimeo\.com\/)(\d+)/);
+    return match ? match[1] : null;
+}
+
+// Get video platform info
+function getVideoPlatform(url) {
+    const ytId = getYouTubeId(url);
+    if (ytId) return { platform: 'youtube', id: ytId };
+    const vimeoId = getVimeoId(url);
+    if (vimeoId) return { platform: 'vimeo', id: vimeoId };
+    return null;
+}
+
 // Get thumbnail URL from video URL
 function getThumbnail(videoUrl, customThumbnail) {
     if (customThumbnail) return customThumbnail;
     const ytId = getYouTubeId(videoUrl);
     if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+    // Vimeo thumbnails require an API call, so we'll fetch them separately
     return null;
+}
+
+// Fetch Vimeo thumbnail
+async function fetchVimeoThumbnail(vimeoId) {
+    try {
+        const response = await fetch(`https://vimeo.com/api/v2/video/${vimeoId}.json`);
+        const data = await response.json();
+        return data[0]?.thumbnail_large || data[0]?.thumbnail_medium || null;
+    } catch (error) {
+        console.log('Could not fetch Vimeo thumbnail for', vimeoId, error);
+        return null;
+    }
 }
 
 // Create a video card element
@@ -64,8 +93,11 @@ function createVideoCard(video, index) {
     const videoUrl = video.videourl || video.videoUrl || '';
     if (videoUrl) card.dataset.videoUrl = videoUrl;
 
-    const ytId = getYouTubeId(videoUrl);
-    if (ytId) card.dataset.ytId = ytId;
+    const platform = getVideoPlatform(videoUrl);
+    if (platform) {
+        card.dataset.platform = platform.platform;
+        card.dataset.videoId = platform.id;
+    }
 
     const thumbnail = getThumbnail(videoUrl, video.thumbnail);
     const gradient = FALLBACK_GRADIENTS[index % FALLBACK_GRADIENTS.length];
@@ -77,8 +109,8 @@ function createVideoCard(video, index) {
         thumbnailStyle = `background: linear-gradient(135deg, ${gradient[0]}, ${gradient[1]});`;
     }
 
-    // Show "Loading..." initially for YouTube videos, otherwise use sheet value
-    const initialViews = ytId ? 'Loading...' : (video.views || '0');
+    // Show "Loading..." initially for YouTube videos, use sheet value for others
+    const initialViews = platform?.platform === 'youtube' ? 'Loading...' : (video.views || '0');
 
     card.innerHTML = `
         <div class="video-thumbnail" style="${thumbnailStyle}">
@@ -93,9 +125,9 @@ function createVideoCard(video, index) {
 
     // Add click handler
     card.addEventListener('click', () => {
-        const ytId = getYouTubeId(videoUrl);
-        if (ytId) {
-            showVideoPlayer(ytId, video.title);
+        const platform = getVideoPlatform(videoUrl);
+        if (platform) {
+            showVideoPlayer(platform.platform, platform.id, video.title);
         } else if (videoUrl) {
             window.open(videoUrl, '_blank');
         } else {
@@ -161,8 +193,9 @@ async function loadVideosFromSheet() {
         // Re-run entrance animation
         animateCardsIn();
 
-        // Fetch real YouTube view counts
+        // Fetch real YouTube view counts and Vimeo thumbnails
         updateAllViewCounts();
+        updateVimeoThumbnails();
 
     } catch (error) {
         console.log('Could not load from Google Sheets, using default content:', error);
@@ -185,14 +218,14 @@ function animateCardsIn() {
     });
 }
 
-// Fetch and update view counts for all YouTube videos
+// Fetch and update view counts for YouTube videos
 async function updateAllViewCounts() {
-    const cards = document.querySelectorAll('.video-card[data-yt-id]');
+    const cards = document.querySelectorAll('.video-card[data-platform="youtube"]');
 
     // Fetch all view counts in parallel
     const fetchPromises = Array.from(cards).map(async (card) => {
-        const ytId = card.dataset.ytId;
-        const views = await fetchYouTubeViews(ytId);
+        const videoId = card.dataset.videoId;
+        const views = await fetchYouTubeViews(videoId);
 
         if (views !== null) {
             const viewCountEl = card.querySelector('.view-count');
@@ -205,14 +238,43 @@ async function updateAllViewCounts() {
     await Promise.all(fetchPromises);
 }
 
+// Fetch and update thumbnails for Vimeo videos
+async function updateVimeoThumbnails() {
+    const cards = document.querySelectorAll('.video-card[data-platform="vimeo"]');
+
+    const fetchPromises = Array.from(cards).map(async (card) => {
+        const videoId = card.dataset.videoId;
+        const thumbnailEl = card.querySelector('.video-thumbnail');
+
+        // Only fetch if no custom thumbnail was set
+        if (thumbnailEl && thumbnailEl.style.background.includes('linear-gradient')) {
+            const thumbnailUrl = await fetchVimeoThumbnail(videoId);
+            if (thumbnailUrl) {
+                thumbnailEl.style.background = `url('${thumbnailUrl}') center/cover`;
+            }
+        }
+    });
+
+    await Promise.all(fetchPromises);
+}
+
 // Load videos when page loads
 document.addEventListener('DOMContentLoaded', loadVideosFromSheet);
 
 // Video Player Modal
-function showVideoPlayer(ytId, title) {
+function showVideoPlayer(platform, videoId, title) {
     // Remove existing player if any
     const existing = document.querySelector('.video-player-modal');
     if (existing) existing.remove();
+
+    // Build embed URL based on platform
+    let embedUrl;
+    if (platform === 'vimeo') {
+        embedUrl = `https://player.vimeo.com/video/${videoId}?autoplay=1`;
+    } else {
+        // Default to YouTube
+        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+    }
 
     const modal = document.createElement('div');
     modal.className = 'video-player-modal';
@@ -223,7 +285,7 @@ function showVideoPlayer(ytId, title) {
             <h2 class="video-player-title">${title || 'Now Playing'}</h2>
             <div class="video-player-wrapper">
                 <iframe
-                    src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0"
+                    src="${embedUrl}"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen
