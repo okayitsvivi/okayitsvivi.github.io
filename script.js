@@ -323,29 +323,38 @@ function showVideoPlayer(ytId, title) {
 
     // Handle landscape mode - make video larger
     const updateLayout = () => {
-        const isLandscape = window.innerWidth > window.innerHeight;
-        const isMobile = window.innerWidth < 768;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const isLandscape = vw > vh;
+        const isMobile = vw < 768 || vh < 500;
 
         if (isLandscape && isMobile) {
-            // Landscape mobile - maximize video, fit within viewport
-            content.style.width = '98%';
-            content.style.maxWidth = 'calc(100vh * 1.77 - 20px)'; // 16:9 ratio based on height
-            content.style.maxHeight = '95vh';
+            // Landscape mobile - fit video within viewport
+            // Calculate max width based on available height (16:9 aspect ratio)
+            const padding = 16; // 8px on each side
+            const availableHeight = vh - 40; // Leave some margin
+            const maxVideoWidth = (availableHeight - padding) * (16 / 9);
+
+            content.style.width = Math.min(vw - 20, maxVideoWidth + padding) + 'px';
+            content.style.maxWidth = 'none';
+            content.style.height = 'auto';
+            content.style.maxHeight = (vh - 20) + 'px';
             content.style.padding = '8px';
             content.style.borderRadius = '8px';
             content.style.border = '2px solid white';
-            titleEl.style.display = 'none'; // Hide title in landscape to maximize video
-            closeBtn.style.width = '28px';
-            closeBtn.style.height = '28px';
-            closeBtn.style.fontSize = '0.9rem';
-            closeBtn.style.top = '-8px';
-            closeBtn.style.right = '-8px';
+            titleEl.style.display = 'none';
+            closeBtn.style.width = '24px';
+            closeBtn.style.height = '24px';
+            closeBtn.style.fontSize = '0.8rem';
+            closeBtn.style.top = '-6px';
+            closeBtn.style.right = '-6px';
             closeBtn.style.border = '2px solid white';
             wrapper.style.borderRadius = '6px';
         } else {
             // Portrait or desktop - normal layout
             content.style.width = '90%';
             content.style.maxWidth = '800px';
+            content.style.height = 'auto';
             content.style.maxHeight = 'none';
             content.style.padding = '20px';
             content.style.borderRadius = '20px';
